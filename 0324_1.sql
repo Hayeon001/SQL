@@ -1,238 +1,3 @@
-SELECT *
- FROM v$version; --현재 사용 중인 오라클 데이터베이스 버전 정보 확인
- 
-SELECT *
- FROM v$option; --현재 사용 중인 데이터베이스의 옵션 정보를 확인
-				--db운영 및 관리에 중요한 정보 제공, 최적화하거나 필요한 옵션 활성화
-
- SELECT *
- FROM v$database;  --현재 사용 중인 오라클 데이터베이스의 정보 출력
-				   --용량이 부족하면, 사용 중인 데이터파일 용량을 확인하고 용량을 늘리는 등
-
-SELECT *
- FROM v$instance;  --현재 사용 중인 데이터베이스 인스턴스의 정보 확인
-				   --DB인스턴스의 상태가 이상하다면, 인스턴스 상태를 확인하고 인스턴스를 다시 시작하는 등
- 
-SELECT *
- FROM v$session;  --현재 데이터베이스에 접속한 모든 세션의 정보
- 				  --DB성능 모니터링 및 진단에 유용. DB세션을 모니터링하거나 필요한 경우 세션을 종료
-
- SELECT *
- FROM v$parameter;  --현재 데이터베이스의 전반적인 구성 정보를 보여주는 뷰
- 				    --DB버전, 인스턴스 이름, 메모리 구성, 경로, 세션 및 시스템 파라미터 등 정보제공
-
- /*
- TRANSACTION
- -데이터베이스에서 수행되는 작업의 단위
- -
- 
- */
-CREATE TABLE DEPT_TCL
- AS (SELECT * FROM DEPT);
-  
-SELECT *
- FROM DEPT_TCL;
-  
-INSERT INTO DEPT_TCL
- VALUES (50,'DATABASE','SEOUL');
-  
-UPDATE DEPT_TCL
- SET LOC = 'BUSAN'
- WHERE DEPTNO = 40;
-  
-DELETE FROM DEPT_TCL
- WHERE DNAME = 'RESEARCH';  --레코드 행자체를 날리기에 목적물 표시 필요없음
-  
-SELECT *
- FROM DEPT_TCL;
- 
-ROLLBACK;
-
-
-
-------------------
-
-INSERT INTO DEPT_TCL
- VALUES (50, 'NEWYORK', 'SEOUL');
-
-UPDATE DEPT_TCL
- SET LOC = 'BUSAN'
- WHERE DEPTNO = 20;
-
-DELETE FROM DEPT_TCL
- WHERE DEPTNO=40;
-
-SELECT *
- FROM DEPT_TCL;
-
-COMMIT;
-
-ROLLBACK; --되돌릴수없음
-
-SELECT *
- FROM DEPT_TCL;
-
---되돌리려면 UPDATE 하면됨
-
-
---LCOK 테스트
---동일한 계정으로 DBeaver에 접속해서 수정
-UPDATE DEPT_TCL
- SET LOC = 'DAEGU'
- WHERE DEPTNO = 30;
-
--- SQL*PLUS에서 실행중인 직원의 UPDATE시도상황을 모를 수 있음.
-SELECT *
- FROM DEPT_TCL;  --SQL*PLUS에서는 UPDATE 결과가 안보임
-
-COMMIT;
-
-SELECT *
- FROM DEPT_TCL; --SQLPLUS에서 아직 COMMIT실행전
-
-
---TUNING : DB처리속도와 안정성 제고 목적이 대부분
---TUNING 전 후 비교
-SELECT *
- FROM EMP
- WHERE SUBSTR(EMPNO,1,2) = 75 --암묵적 형변환
- 	AND LENGTH (EMPNO) = 4; --불필요한비교
- 
-SELECT *
- FROM EMP
- WHERE EMPNO >7499 AND EMPNO < 7600;
-
---TUNING 전 후 비교
-SELECT *
- FROM EMP
- WHERE ENAME || ' ' || JOB = 'WARD SALESMAN';
-
-SELECT *
- FROM EMP
- WHERE ENAME = 'WARD'
- 	AND JOB = 'SALESMAN';
-
-
---TUNING 전 후 비교
-SELECT DISTINCT E.EMPNO
-			  , E.ENAME
-			  ,D.DEPTNO
- FROM EMP E, DEPT D
- WHERE E.DEPTNO = D.DEPTNO;
- 
-
-SELECT *
- FROM EMP
- WHERE DEPTNO = '10'
-UNION   ------UNION : 레코드 집합한 후 중복제거
-SELECT *
- FROM EMP
- WHERE DEPTNO = '20'; --DEPTNO 10, 20은 상호독립적 집합이므로 중복제거 불필요
-
-
---TUNING 전 후 비교
-SELECT ENAME
-	 , EMPNO
-	 , SUM(SAL)
- FROM EMP
- GROUP BY ENAME, EMPNO; 
- 
- 
- SELECT EMPNO
-	 , ENAME
-	 , SUM(SAL)
- FROM EMP
- GROUP BY EMPNO, ENAME; --인덱스 설정된 EMPNO를 우선사용하는게 더 빠름
- 
- 
-
---TUNING 전 후 비교
-SELECT EMPNO
-	 , ENAME
- FROM EMP
- WHERE TO_CHAR(HIREDATE, 'YYYYMMDD') LIKE '1981%'
- 	AND EMPNO > 7700 ;
-
-
-SELECT EMPNO
-	 , ENAME
- FROM EMP
- WHERE EXTRACT (YEAR, 'YYYYMMDD') LIKE 1981
- 	AND EMPNO > 7700 ;
-
-
- --튜닝추가
- --1.INDEX활용 - GROUP BY 집계함수
- --2.오라클 DATA 객체함수 비교
- 
- SELECT JOB
- 	, COUNT(SAL)
-  FROM EMP
-  GROUP BY JOB;
- 
- SELECT JOB
- 	, SUM(SAL)
-  FROM EMP
-  GROUP BY JOB;
- 
-SELECT *
- FROM USER_INDEXES
- WHERE TABLE_NAME LIKE 'EMP';--------?
- 
- 
- 	ON EMP(JOB);
-
-
- SELECT JOB, SUM(SAL) AS SUM_OF_SAL
-  FROM EMP
-  GROUP BY JOB
-  ORDER BY SUM_OF_SAL DESC;
- 
- 
- 
- ------------------------------
- 
-
--- GROUP BY : 집계함수
--- JOIN
- 
- SELECT DEPTNO, FLOOR(AVG(SAL)) AS AVG_SAL
-  FROM EMP
-  GROUP BY DEPTNO;  -------------------------------?
-
-  
-SELECT DEPTNO
-	, JOB 
-	, FLOOR(AVG(SAL)) AS AVG_SAL
- FROM EMP
- GROUP BY JOB, DEPTNO
- ORDER BY JOB, DEPTNO; 
- 
- 
- SELECT *
-  FROM USER_INDEX 
-  WHERE TABLE_NAME = 'EMP'; -------------TABLE_NAME
-  
-  
-SELECT DEPTNO
-	, JOB 
-	, FLOOR(AVG(SAL)) AS AVG_SAL
- FROM EMP
- GROUP BY JOB, DEPTNO
- HAVING AVG(SAL) >=2000
- ORDER BY JOB, DEPTNO; 
-  
-SELECT DEPTNO
-	, JOB 
-	, FLOOR(AVG(SAL)) AS AVG_SAL
-	, MAX (SAL) AS MAX_SAL
-	, MIN (SAL) AS MIN_SAL
- FROM EMP
- GROUP BY JOB, DEPTNO
- HAVING AVG(SAL) >=2000
- ORDER BY JOB, DEPTNO; 
- 
-
 
 -- LISTAGG / PIVOT / ROLLUP / CUBE / GROUPING SET
 SELECT DEPTNO
@@ -265,6 +30,7 @@ SELECT DEPTNO
  ORDER BY DEPTNO;
 
 
+
 SELECT *
 FROM (SELECT DEPTNO
 	, MAX(DECODE(JOB, 'CLERK', SAL)) AS "CLERK"
@@ -272,10 +38,32 @@ FROM (SELECT DEPTNO
 	, MAX(DECODE(JOB, 'PRESIDENT', SAL)) AS "PRESIDENT"
 	, MAX(DECODE(JOB, 'MANAGER', SAL)) AS "MANAGER"
 	, MAX(DECODE(JOB, 'ANALYST', SAL)) AS "ANALYST"
- FROM EMP
- GROUP BY DEPTNO
- ORDER BY DEPTNO)
-UNPIVOT FOR JOB IN ('CLERK', 'SALESMAN','PRESIDENT', 'MANAGER', 'ANALYST');         ------------------------????
+	 FROM EMP
+	 GROUP BY DEPTNO
+	 ORDER BY DEPTNO)
+UNPIVOT (SAL FOR JOB IN ('CLERK', 'SALESMAN','PRESIDENT', 'MANAGER', 'ANALYST'))----------------------???
+ORDER BY DEPTNO, JOB;
+
+
+
+
+
+-- VIEW 생성(HR스키마)
+
+
+--JOIN ... ON ... 구문 : 두 개의 테이블의 컬럼을 연결
+--INNER JOIN 1:1관계로 테이블간 연결을 통해 추가 정보를 제공하는 목적이 대부분
+
+SELECT *
+ FROM EMP E JOIN DEPT D
+ 	ON E.DEPTNO = D.DEPTNO ;
+
+
+LEFT OUTER JOIN
+
+ALTER
+
+SEQUENCE
 
 
 
@@ -284,13 +72,94 @@ UNPIVOT FOR JOB IN ('CLERK', 'SALESMAN','PRESIDENT', 'MANAGER', 'ANALYST');     
 
 
 
+----------------
+/*
+6조
+일하자빚갚자돈벌자
+직원이 부서에 공부해서 풀에 배정되는 시스템
+업무량 상위 부서 인원확충 어려움
+체계적인 프로세스로 공모가 이뤄진다고 보기 어려움
+직원조회 -> 플 조회 -> 공모결과 조회
+1대1 매칭으로 다 다른 자격증을 하나씩 보유한 것으로 가정
+
+- 아이디어를 떠올리게 된 계기
+- 어떤데이터를 넣었는지
+- 기존시스템과의 차이, 충돌 가능성
+- 구현되었을 경우 발생할 수 있는 문제점
+- 
+
+5조
+MUSE인력관리시스템
+기업요구사항 분석
+신입행원 이탈 방지 및 핵심인력 양성
+
+
+4조
+저성과자 걸러내자
+부서별 고과 조회기능
+부서별 급여조회기능
+프리라이더 없애자 분류기능
+절대평가 상대평가가 섞여있음으로 생기는 문제
+시스템이 도입될 수 있으려면 어떤 문제를 해결해야
+임원부터 해고하는 시스템? 전체직원으로 할 경우 직원들이 수긍할 수 있을까
+
+
+3조
+휴가사용률
+
+
+*/
 
 
 
 
+--DATA TYPE
+--성능측명
+--자원활용측면 : 설계단계 중요. 비용문제
+--장애대응 측면
 
 
 
+-- 오라클 DATE 객체 정보를 바탕으로 쿼리 성능을 비교하는 경우 (
+-- 쿼리 1 : to_char() 반환 문자열 = ‘1981’ 문자열 비교
+SELECT empno, ename
+FROM emp 
+WHERE to_char(hiredate, ＇YYYY＇) = ＇1981’ -- 동일한 DataType ~ String
+AND empno > 7700
+;
+-- 쿼리 2 : extract() 반환 정수 = 1981 정수 비교
+SELECT empno, ename
+FROM EMP
+WHERE EXTRACT (year FROM hiredate) = 1981 -- 동일한 DataType ~ integer 
+AND empno > 7700
 
 
- 
+class ORACLE {  // 오라클 클래스 구성 예시 (실제 오라클 클래스 구조와 다른 예시에 불과)
+	class Schema { // 스카마 객체 (Each user has a single Schema in Oracle)
+		class Table; // 스키마 하위 오라클 객체
+		class Index;
+		class View;
+		class Sequence;
+		class DATE { // 오라클이 설계한 DATE 객체
+		int type;
+		int len;
+		int Year;
+		int Month;
+		int Day;
+		int Hours;
+		int Minutes;
+		int Seconds;
+		public DATE(void) { // 오라클 DATE 객체 생성자 예시 (SYSDATE 등의 날짜 객체)
+		return get_datetime_from_os() // OS로부터 날짜일시 획득
+		}
+		public str to_char(date dt, string fmt) {
+		return str_date //  포맷(fmt)에 따른 날짜일시를 문자열로 반환
+		}
+		Public int extract(string fmt) {
+		return int_date // 포맷(릇)에 따른 날짜일일시의 구성요소를 반환
+		}
+;
+
+--SCOTT 스키마
+
+
